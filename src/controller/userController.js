@@ -54,6 +54,22 @@ const addExpense = async(req, res) => {
     }
 }
 
+const addIncome = async(req, res) => {
+    try {
+        const data = {
+            orderId: req.params.orderId,
+            transaction: "income",
+            amount: req.body.amount,
+            activity: req.body.description
+        }
+        await transactionModel.create(data)
+        await orderModel.findOneAndUpdate({ _id: req.params?.orderId }, { $inc: { income: req.body.amount } })
+        return res.send({ success: true })
+    } catch (error) {
+        console.log(error.message)
+    }
+}
+
 const fetchIncomeAndExpense = async(req, res) => {
     try {
         const expenses = await transactionModel.find({ orderId: req.params.orderId, transaction: "expense" })
@@ -69,5 +85,6 @@ export default {
     getOrders,
     getSingleOrder,
     addExpense,
+    addIncome,
     fetchIncomeAndExpense
 }

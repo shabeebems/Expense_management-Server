@@ -3,6 +3,7 @@ import orderModel from "../models/orderModel.js"
 
 const getOrders = async(req, res) => {
     try {
+        console.log(req.cookies)
         const accessToken = req.cookies.accessToken
         const decoded = decode(accessToken, process.env.ACCESS_TOKEN_SECRET)
         const orders = await orderModel.find({ companyCode: decoded.companyCode })

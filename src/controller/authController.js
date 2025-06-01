@@ -18,7 +18,6 @@ const loginCheck = async(req, res) => {
         // Generate tokens and create tokens
         await createAccessToken(res, payload)
         await createRefreshToken(res, payload)
-
         return res.send({ success: true, message: "Success" })
     } catch (error) {
         console.log(error.message)

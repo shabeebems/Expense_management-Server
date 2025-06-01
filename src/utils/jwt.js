@@ -29,7 +29,6 @@ export const createRefreshToken = (res, payload) => {
         expiresIn: '10d',
         algorithm: 'HS256'
     });
-    console.log('nodess', process.env.NODE_ENV)
     res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: true,

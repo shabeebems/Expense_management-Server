@@ -17,9 +17,9 @@ export const createAccessToken = (res, payload) => {
 
     res.cookie('accessToken', accessToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
         maxAge: 30 * 60 * 1000, // 30 minutes
-        sameSite: 'lax',
+        sameSite: 'none',
         path: '/'
     });
 };
@@ -29,12 +29,12 @@ export const createRefreshToken = (res, payload) => {
         expiresIn: '10d',
         algorithm: 'HS256'
     });
-    console.log('node', process.env.NODE_ENV)
+    console.log('nodess', process.env.NODE_ENV)
     res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
         maxAge: 10 * 24 * 60 * 60 * 1000, // 10 days
-        sameSite: 'lax',
+        sameSite: 'none',
         path: '/'
     });
 };

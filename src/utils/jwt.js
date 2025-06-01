@@ -9,33 +9,35 @@ export const deleteToken = async (res ,token) => {
     });
 }
 
-export const createAccessToken = async (res , payload) => {
+export const createAccessToken = (res, payload) => {
     const accessToken = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {
         expiresIn: '30m',
         algorithm: 'HS256'
     });
-    res.cookie('accessToken', accessToken, { 
+
+    res.cookie('accessToken', accessToken, {
         httpOnly: true,
-        secure: false,
-        maxAge: 30 * 60 * 1000, // 30 mins
+        secure: true,
+        maxAge: 30 * 60 * 1000, // 30 minutes
         sameSite: 'strict',
         path: '/'
     });
-}
+};
 
-export const createRefreshToken = async (res , payload) => {
+export const createRefreshToken = (res, payload) => {
     const refreshToken = jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, {
-        expiresIn: "10d",
+        expiresIn: '10d',
         algorithm: 'HS256'
     });
-    res.cookie('refreshToken', refreshToken, { 
+
+    res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
-        secure: false,
+        secure: true,
         maxAge: 10 * 24 * 60 * 60 * 1000, // 10 days
         sameSite: 'strict',
         path: '/'
     });
-}
+};
 
 export const decode = async (token, jwtSecret) => {
     return jwt.verify(token, jwtSecret);

@@ -3,6 +3,7 @@ import { createAccessToken, createRefreshToken, deleteToken } from "../utils/jwt
 
 const loginCheck = async(req, res) => {
     try {
+        console.log('Check login')
         const { email, role } = req.body
         const existingUser = await userModel.findOne({ email, password: req.body.password });
         

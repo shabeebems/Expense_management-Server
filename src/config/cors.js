@@ -1,6 +1,13 @@
 import cors from 'cors';
+import dotenv from "dotenv"
+dotenv.config()
+
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
 export const corsMiddleware = cors({
-    origin: process.env.FRONTEND_URL,
+    origin: [FRONTEND_URL],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    // origin: "http://localhost:5173",
     credentials: true
 })

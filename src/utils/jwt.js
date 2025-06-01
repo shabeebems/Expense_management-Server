@@ -3,8 +3,8 @@ import jwt from 'jsonwebtoken'
 export const deleteToken = async (res ,token) => {
     res.clearCookie(token, {
         httpOnly: true,
-        secure: false,
-        sameSite: 'strict',
+        secure: true,
+        sameSite: 'none',
         path: '/'
     });
 }

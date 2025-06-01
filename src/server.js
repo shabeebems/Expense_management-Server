@@ -11,13 +11,14 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
-app.options('*', corsMiddleware);
+app.use(corsMiddleware);
 app.use(cookieParser());
 connectDB();
 
 app.use('/api/auth', authRouter);
 app.use('/api/user', userRouter);
 app.use('/api/admin', adminRouter);
+console.log("Loaded FRONTEND_URL:", process.env.FRONTEND_URL, process.env.VERCEL_FRONTEND_URL); // ✅ Debug log
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -19,7 +19,7 @@ export const createAccessToken = (res, payload) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         maxAge: 30 * 60 * 1000, // 30 minutes
-        sameSite: 'strict',
+        sameSite: 'lax',
         path: '/'
     });
 };
@@ -34,7 +34,7 @@ export const createRefreshToken = (res, payload) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         maxAge: 10 * 24 * 60 * 60 * 1000, // 10 days
-        sameSite: 'strict',
+        sameSite: 'lax',
         path: '/'
     });
 };

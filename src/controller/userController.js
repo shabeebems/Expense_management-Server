@@ -20,6 +20,7 @@ const createOrder = async(req, res) => {
 
 const getOrders = async(req, res) => {
     try {
+        console.log('Fetching')
         const accessToken = req.cookies.accessToken
         const decoded = decode(accessToken, process.env.ACCESS_TOKEN_SECRET)
         const orders = await orderModel.find({ userId: decoded._id })

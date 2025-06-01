@@ -1,0 +1,50 @@
+# Node dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Log files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Editor-specific files
+.vscode/
+.idea/
+
+# Build output
+dist/
+build/
+
+# Coverage reports
+coverage/
+
+# Optional npm cache directory
+.npm
+
+# TypeScript (if used)
+*.tsbuildinfo
+
+# PM2 logs and process files
+.pids/
+*.log
+
+# MongoDB dump files
+dump/
+
+# Swagger generated files (if any)
+swagger.json
+swagger.yaml

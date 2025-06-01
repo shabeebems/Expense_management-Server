@@ -6,10 +6,11 @@ console.log(process.env.FRONTEND_URL, process.env.VERCEL_FRONTEND_URL)
 
 export const corsMiddleware = cors({
   origin: function (origin, callback) {
-    console.log("Origin attempting to access:", origin);  // <-- Add this
+    console.log("Origin attempting to access:", origin);
     const allowedOrigins = [process.env.FRONTEND_URL, process.env.VERCEL_FRONTEND_URL];
+
     if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
+      callback(null, true); // Allow undefined (like Postman or server-to-server)
     } else {
       callback(new Error('Not allowed by CORS'));
     }
@@ -18,4 +19,5 @@ export const corsMiddleware = cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 });
+
 

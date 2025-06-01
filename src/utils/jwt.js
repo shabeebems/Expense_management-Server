@@ -17,7 +17,7 @@ export const createAccessToken = (res, payload) => {
 
     res.cookie('accessToken', accessToken, {
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === "production",
         maxAge: 30 * 60 * 1000, // 30 minutes
         sameSite: 'strict',
         path: '/'
@@ -32,7 +32,7 @@ export const createRefreshToken = (res, payload) => {
 
     res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === "production",
         maxAge: 10 * 24 * 60 * 60 * 1000, // 10 days
         sameSite: 'strict',
         path: '/'

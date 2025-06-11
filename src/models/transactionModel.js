@@ -5,6 +5,8 @@ const transactionSchema = new mongoose.Schema({
     transaction: { type: String, required: true, enum: ["expense", "income"] },
     amount: { type: Number, required: true },
     activity: { type: String, required: true }
+}, {
+    timestamps: true
 })
 
 export default mongoose.model('transaction', transactionSchema)

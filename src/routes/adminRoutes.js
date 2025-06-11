@@ -3,7 +3,7 @@ import adminController from '../controller/adminController.js'
 const adminRouter = express.Router()
 
 // User
-adminRouter.get('/fetch_orders', adminController.getOrders);
-adminRouter.patch('/update_order/:orderId', adminController.updateOrder);
+adminRouter.get('/fetch_orders/:statusFilter', adminController.getOrders);
+adminRouter.patch('/update_order/:orderId/:status', adminController.updateOrder);
 
 export default adminRouter

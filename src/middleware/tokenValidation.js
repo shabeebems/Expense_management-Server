@@ -30,6 +30,5 @@ export const authenticateToken = async(req, res, next) => {
             console.log('No tokens')
         }
     }
-    next()
 }
 

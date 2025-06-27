@@ -22,6 +22,7 @@ export const createAccessToken = (res, payload) => {
         sameSite: 'none',
         path: '/'
     });
+    return accessToken
 };
 
 export const createRefreshToken = (res, payload) => {

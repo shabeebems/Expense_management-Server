@@ -3,7 +3,6 @@ import { createAccessToken, createRefreshToken, deleteToken } from "../utils/jwt
 
 const loginCheck = async(req, res) => {
     try {
-        console.log('Check login')
         const { email, role } = req.body
         const existingUser = await userModel.findOne({ email, password: req.body.password });
         
@@ -15,11 +14,10 @@ const loginCheck = async(req, res) => {
             companyCode: existingUser.companyCode,
             email, role
         }
-
         // Generate tokens and create tokens
-        await createAccessToken(res, payload)
-        await createRefreshToken(res, payload)
-        return res.send({ success: true, message: "Success" })
+        createAccessToken(res, payload)
+        createRefreshToken(res, payload)
+        return res.send({ success: true, message: "Successs", token: { email, role } })
     } catch (error) {
         console.log(error.message)
     }

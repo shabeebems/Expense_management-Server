@@ -11,7 +11,6 @@ const loginCheck = async(req, res) => {
 
         const payload = {
             _id: existingUser._id,
-            companyCode: existingUser.companyCode,
             email, role
         }
         // Generate tokens and create tokens
@@ -33,7 +32,46 @@ const logout = async(req, res) => {
     }
 }
 
+const register = async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+
+        // Check if user already exists
+        const existingUser = await userModel.findOne({ email });
+        if (existingUser) {
+            return res.send({ success: false, message: "User already exists" });
+        }
+
+        // Create new user (Default role: Manager)
+        const newUser = new userModel({
+            name,
+            email,
+            password,
+            role: 'manager'
+        });
+
+        await newUser.save();
+
+        const payload = {
+            _id: newUser._id,
+            email: newUser.email,
+            role: newUser.role
+        };
+
+        // Generate tokens and create tokens
+        createAccessToken(res, payload);
+        createRefreshToken(res, payload);
+
+        return res.send({ success: true, message: "Registration successful", token: { email, role: 'manager' } });
+    } catch (error) {
+        console.log(error.message);
+        return res.send({ success: false, message: "Registration failed" });
+    }
+};
+
+
 export default {
     loginCheck,
-    logout
+    logout,
+    register
 }

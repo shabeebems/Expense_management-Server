@@ -1,13 +1,11 @@
 import mongoose from "mongoose";
 
-const orderSchema = new mongoose.Schema({
+const projectSchema = new mongoose.Schema({
     name: { type: String, required: true },
     place: { type: String },
-    image: { type: String },
-    companyCode: { type: String },
     status: { 
         type: String, 
-        enum: ['Pending', 'In progress', 'Completed', 'Cancelled'], 
+        enum: ['Pending', 'In progress', 'Completed'],
         default: 'Pending' 
     },
     expense: { type: Number, default: 0 },
@@ -20,4 +18,4 @@ const orderSchema = new mongoose.Schema({
     timestamps: true
 });
 
-export default mongoose.model('Orders', orderSchema);
+export default mongoose.model('Project', projectSchema);

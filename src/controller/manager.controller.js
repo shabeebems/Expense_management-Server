@@ -1,5 +1,5 @@
 import { decode } from "jsonwebtoken"
-import orderModel from "../models/orderModel.js"
+import orderModel from "../models/project.model.js"
 
 const getOrders = async(req, res) => {
     try {

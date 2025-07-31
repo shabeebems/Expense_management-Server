@@ -1,6 +1,6 @@
 import { decode } from "jsonwebtoken"
-import orderModel from "../models/orderModel.js"
-import transactionModel from "../models/transactionModel.js"
+import orderModel from "../models/project.model.js"
+import transactionModel from "../models/transaction.model.js"
 
 const createOrder = async(req, res) => {
     try {

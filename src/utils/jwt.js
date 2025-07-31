@@ -14,7 +14,6 @@ export const createAccessToken = (res, payload) => {
         expiresIn: '30m',
         algorithm: 'HS256'
     });
-
     res.cookie('accessToken', accessToken, {
         httpOnly: true,
         secure: true,
@@ -22,7 +21,6 @@ export const createAccessToken = (res, payload) => {
         sameSite: 'none',
         path: '/'
     });
-    return accessToken
 };
 
 export const createRefreshToken = (res, payload) => {

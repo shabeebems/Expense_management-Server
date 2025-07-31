@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { createAccessToken, createRefreshToken, deleteToken } from "../utils/jwt.js";
+import { createAccessToken, deleteToken } from "../utils/jwt.js";
 
 export const authenticateToken = async(req, res, next) => {
     const accessToken = req.cookies.accessToken
@@ -9,6 +9,10 @@ export const authenticateToken = async(req, res, next) => {
             if(err) {
                 deleteToken(res, 'accessToken')
                 deleteToken(res, 'refreshToken')
+                res.status(406).json({
+                    success: false,
+                    message: "No tokens"
+                })
             } else {
                 next()
             }
@@ -20,14 +24,21 @@ export const authenticateToken = async(req, res, next) => {
                 if(err) {
                     deleteToken(res, 'accessToken')
                     deleteToken(res, 'refreshToken')
+                    res.status(406).json({
+                        success: false,
+                        message: "No tokens"
+                    })
                 } else {
                     const { iat, exp, ...payload } = decoded
-                    createAccessToken(res, payload)
+                    createAccessToken(res, payload);
                     next()
                 }
             })
         } else {
-            console.log('No tokens')
+            res.status(406).json({
+                success: false,
+                message: "No tokens"
+            })
         }
     }
 }

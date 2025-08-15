@@ -1,22 +1,22 @@
 import userModel from "../models/user.model.js";
-import { createAccessToken, createRefreshToken, deleteToken } from "../utils/jwt.js";
+import { createAccessToken, deleteToken } from "../utils/jwt.js";
 
 const loginCheck = async(req, res) => {
     try {
-        const { email, role, password } = req.body
+        const { email, password } = req.body
         const existingUser = await userModel.findOne({ email, password });
         
         if(!existingUser) return res.send({ success: false, message: "User not exist" })
-        if(existingUser.role !== role) return res.send({ success: false, message: `You're not ${role}` })
 
         const payload = {
             _id: existingUser._id,
-            email, role
+            email
         }
+
         // Generate tokens and create tokens
         createAccessToken(res, payload)
-        createRefreshToken(res, payload)
-        return res.send({ success: true, message: "Successs", token: { email, role } })
+
+        return res.send({ success: true, message: "Successs", token: { email } })
     } catch (error) {
         console.log(error.message)
     }
@@ -24,8 +24,8 @@ const loginCheck = async(req, res) => {
 
 const logout = async(req, res) => {
     try {
-        deleteToken(res, "refreshToken")
         deleteToken(res, "accessToken")
+
         res.status(200).json({ message: 'Logged out successfully' });
     } catch (error) {
         console.log(error.message)
@@ -42,27 +42,20 @@ const register = async (req, res) => {
             return res.send({ success: false, message: "User already exists" });
         }
 
-        // Create new user (Default role: Manager)
-        const newUser = new userModel({
-            name,
-            email,
-            password,
-            role: 'manager'
-        });
+        // Create new user
+        const newUser = new userModel({ name, email, password });
 
         await newUser.save();
 
         const payload = {
             _id: newUser._id,
             email: newUser.email,
-            role: newUser.role
         };
 
         // Generate tokens and create tokens
         createAccessToken(res, payload);
-        createRefreshToken(res, payload);
 
-        return res.send({ success: true, message: "Registration successful", token: { email, role: 'manager' } });
+        return res.send({ success: true, message: "Registration successful", token: { email } });
     } catch (error) {
         console.log(error.message);
         return res.send({ success: false, message: "Registration failed" });

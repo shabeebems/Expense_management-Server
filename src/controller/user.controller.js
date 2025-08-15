@@ -29,6 +29,15 @@ const createLedger = async(req, res) => {
     }
 }
 
+const getLedger = async(req, res) => {
+    try {
+        const ledger = await ledgerSchema.findOne({ _id: req.params.ledgerId })
+        return res.send(ledger)
+    } catch (error) {
+        console.log(error.message)
+    }
+}
+
 const getTransactions = async(req, res) => {
     try {
         const transactions = await transactionSchema.find({ ledgerId: req.params.ledgerId })
@@ -42,7 +51,15 @@ const getTransactions = async(req, res) => {
 
 const createTransactions = async(req, res) => {
     try {
-        await transactionSchema.create({ ...req.params, ...req.body })
+        const { type, amount } = req.body
+        const { ledgerId } = req.params
+
+        await transactionSchema.create({ ledgerId, ...req.body })
+        if(type === "income") {
+            await ledgerSchema.updateOne({ _id: ledgerId }, { $inc: { totalIncome: amount } })
+        } else if(type === "expense") {
+            await ledgerSchema.updateOne({ _id: ledgerId }, { $inc: { totalExpense: amount } })
+        }
         return res.send({ success: true })
     } catch (error) {
         console.log(error.message)
@@ -52,6 +69,7 @@ const createTransactions = async(req, res) => {
 export default {
     getLedgers,
     createLedger,
+    getLedger,
     getTransactions,
     createTransactions
 }

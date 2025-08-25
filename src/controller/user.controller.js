@@ -1,12 +1,11 @@
-import { decode } from "jsonwebtoken"
 
 import ledgerSchema from "../models/ledger.model.js"
 import transactionSchema from "../models/transaction.model.js"
+import { decodeToken } from "../utils/jwt.js"
 
 const getLedgers = async(req, res) => {
     try {
-        const accessToken = req.cookies.accessToken
-        const decoded = decode(accessToken, process.env.ACCESS_TOKEN_SECRET)
+        const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
         const ledgers = await ledgerSchema.find({ userId: decoded._id })
         return res.send(ledgers)
     } catch (error) {

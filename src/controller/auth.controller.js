@@ -1,5 +1,5 @@
 import userModel from "../models/user.model.js";
-import { createAccessToken, deleteToken } from "../utils/jwt.js";
+import { createAccessToken, createRefreshToken, deleteToken } from "../utils/jwt.js";
 
 const loginCheck = async(req, res) => {
     try {
@@ -13,8 +13,8 @@ const loginCheck = async(req, res) => {
             email
         }
 
-        // Generate tokens and create tokens
         createAccessToken(res, payload)
+        createRefreshToken(res, payload);
 
         return res.send({ success: true, message: "Successs", token: { email } })
     } catch (error) {
@@ -25,6 +25,7 @@ const loginCheck = async(req, res) => {
 const logout = async(req, res) => {
     try {
         deleteToken(res, "accessToken")
+        deleteToken(res, "refreshToken")
 
         res.status(200).json({ message: 'Logged out successfully' });
     } catch (error) {
@@ -34,17 +35,20 @@ const logout = async(req, res) => {
 
 const register = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { email, username } = req.body;
+        console.log(req.body)
 
-        // Check if user already exists
-        const existingUser = await userModel.findOne({ email });
-        if (existingUser) {
-            return res.send({ success: false, message: "User already exists" });
+        const existingEmail = await userModel.findOne({ email });
+        if (existingEmail) {
+            return res.send({ success: false, message: "Email already exists" });
         }
 
-        // Create new user
-        const newUser = new userModel({ name, email, password });
+        const existingUsername = await userModel.findOne({ username });
+        if (existingUsername) {
+            return res.send({ success: false, message: "Username already exists" });
+        }
 
+        const newUser = new userModel(req.body);
         await newUser.save();
 
         const payload = {
@@ -52,8 +56,8 @@ const register = async (req, res) => {
             email: newUser.email,
         };
 
-        // Generate tokens and create tokens
         createAccessToken(res, payload);
+        createRefreshToken(res, payload);
 
         return res.send({ success: true, message: "Registration successful", token: { email } });
     } catch (error) {

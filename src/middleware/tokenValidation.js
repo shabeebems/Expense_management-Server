@@ -21,6 +21,7 @@ export const authenticateToken = async(req, res, next) => {
         const refreshToken = req.cookies.refreshToken
         if(refreshToken) {
             jwt.verify(refreshToken, REFRESH_TOKEN_SECRET, (err, decoded) => {
+                
                 if(err) {
                     deleteToken(res, 'accessToken')
                     deleteToken(res, 'refreshToken')
@@ -29,8 +30,12 @@ export const authenticateToken = async(req, res, next) => {
                         message: "No tokens"
                     })
                 } else {
+                    
                     const { iat, exp, ...payload } = decoded
                     createAccessToken(res, payload);
+                    payload._id = payload._id.toString()
+                    req.user = payload
+                    
                     next()
                 }
             })

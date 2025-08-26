@@ -11,6 +11,9 @@ userRouter.get('/ledger/:ledgerId', authenticateToken, userController.getLedger)
 userRouter.get('/transactions/:ledgerId', authenticateToken, userController.getTransactions);
 userRouter.post('/transactions/:ledgerId', authenticateToken, userController.createTransactions);
 
+userRouter.get('/users', authenticateToken, userController.getUsers);
+userRouter.patch('/add-members', authenticateToken, userController.addMembers);
+
 userRouter.get('/run-server', () => console.log("User entered server"));
 
 export default userRouter

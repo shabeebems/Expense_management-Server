@@ -1,6 +1,6 @@
-
 import ledgerSchema from "../models/ledger.model.js"
 import transactionSchema from "../models/transaction.model.js"
+import userSchema from "../models/user.model.js";
 import { decodeToken } from "../utils/jwt.js"
 
 const getLedgers = async(req, res) => {
@@ -16,10 +16,15 @@ const getLedgers = async(req, res) => {
 const createLedger = async(req, res) => {
     try {
         const accessToken = req.cookies.accessToken
-        const decoded = decode(accessToken, process.env.ACCESS_TOKEN_SECRET)
+        const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
         const { _id } = decoded
+        const user = await userSchema.findOne({ _id })
+        console.log(user.username)
         const data = {
-            name: req.body.newName, userId: _id
+            name: req.body.newName, userId: _id, 
+            members: [{
+                _id, username: user.username, isAdmin: true
+            }]
         }
         const newLedger = await ledgerSchema.create(data)
         return res.send(newLedger)
@@ -65,10 +70,52 @@ const createTransactions = async(req, res) => {
     }
 }
 
+const getUsers = async(req, res) => {
+    try {
+        const search = req.query.search || "";
+        const users = await userSchema.find(
+            { username: { $regex: search, $options: "i" } },
+            { username: 1, _id: 0 }
+        );
+        const usernames = users.map(user => user.username);
+        return res.send(usernames)
+    } catch (error) {
+        console.log(error.message)
+    }
+}
+
+const addMembers = async(req, res) => {
+    try {
+        const { ledgerId, username } = req.body;
+        const user = await userSchema.findOne({ username })
+        if(user) {
+            await ledgerSchema.findByIdAndUpdate(
+                ledgerId,
+                {
+                    $push: {
+                        members: {
+                            username: user.username,
+                            userId: user._id, isAdmin: false
+                        },
+                    },
+                },
+                { new: true }
+            );
+            
+            return res.send(user);
+        }
+        return res.send(false)
+    } catch (error) {
+        console.log(error.message)
+    }
+}
+
 export default {
     getLedgers,
     createLedger,
     getLedger,
     getTransactions,
-    createTransactions
+    createTransactions,
+    getUsers,
+    addMembers
 }

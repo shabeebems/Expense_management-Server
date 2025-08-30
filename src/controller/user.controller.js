@@ -1,12 +1,19 @@
 import ledgerSchema from "../models/ledger.model.js"
 import transactionSchema from "../models/transaction.model.js"
 import userSchema from "../models/user.model.js";
+import chatSchema from "../models/chat.model.js";
 import { decodeToken } from "../utils/jwt.js"
+import mongoose from "mongoose";
 
 const getLedgers = async(req, res) => {
     try {
         const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
-        const ledgers = await ledgerSchema.find({ userId: decoded._id })
+        const userObjectId = new mongoose.Types.ObjectId(decoded._id);
+
+        const ledgers = await ledgerSchema.find({ 
+            members: { $elemMatch: { userId: userObjectId } } 
+        });
+
         return res.send(ledgers)
     } catch (error) {
         console.log(error.message)
@@ -15,15 +22,15 @@ const getLedgers = async(req, res) => {
 
 const createLedger = async(req, res) => {
     try {
-        const accessToken = req.cookies.accessToken
         const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
         const { _id } = decoded
+        
         const user = await userSchema.findOne({ _id })
-        console.log(user.username)
+        const userObjectId = new mongoose.Types.ObjectId(decoded._id);
         const data = {
             name: req.body.newName, userId: _id, 
             members: [{
-                _id, username: user.username, isAdmin: true
+                userId: userObjectId, username: user.username, isAdmin: true
             }]
         }
         const newLedger = await ledgerSchema.create(data)
@@ -88,9 +95,26 @@ const addMembers = async(req, res) => {
     try {
         const { ledgerId, username } = req.body;
         const user = await userSchema.findOne({ username })
-        if(user) {
-            await ledgerSchema.findByIdAndUpdate(
-                ledgerId,
+        if(!user) return res.send(false) 
+
+        const ledger = await ledgerSchema.findByIdAndUpdate(
+            ledgerId,
+            {
+                $push: {
+                    members: {
+                        username: user.username,
+                        userId: user._id, isAdmin: false
+                    },
+                },
+            },
+            { new: true }
+        );
+
+        const existChat = await chatSchema.findOne({ ledgerId })
+
+        if(existChat) {
+            await chatSchema.findByIdAndUpdate(
+                existChat._id,
                 {
                     $push: {
                         members: {
@@ -100,11 +124,16 @@ const addMembers = async(req, res) => {
                     },
                 },
                 { new: true }
-            );
-            
-            return res.send(user);
+            )
+        } else {
+            const data = {
+                ledgerId, name: ledger.name,
+                members: ledger.members
+            }
+            await chatSchema.create(data)
         }
-        return res.send(false)
+            
+        return res.send(user);
     } catch (error) {
         console.log(error.message)
     }

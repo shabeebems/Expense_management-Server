@@ -1,8 +1,8 @@
 import express from 'express';
 import userController from '../controller/user.controller.js'
+import messageController from '../controller/message.controller.js'
 import { authenticateToken } from '../middleware/tokenValidation.js';
 const userRouter = express.Router()
-
 
 userRouter.get('/ledger', authenticateToken, userController.getLedgers);
 userRouter.post('/ledger', authenticateToken, userController.createLedger);
@@ -13,6 +13,13 @@ userRouter.post('/transactions/:ledgerId', authenticateToken, userController.cre
 
 userRouter.get('/users', authenticateToken, userController.getUsers);
 userRouter.patch('/add-members', authenticateToken, userController.addMembers);
+
+userRouter.get('/chats', authenticateToken, userController.getChats);
+userRouter.get('/current-user', authenticateToken, userController.getCurrentUser);
+
+userRouter.post('/messages', authenticateToken, messageController.sendMessage);
+userRouter.get('/messages/:chatId', authenticateToken, messageController.getMessages);
+userRouter.get('/unread-count', authenticateToken, messageController.getUnreadCount);
 
 userRouter.get('/run-server', () => console.log("User entered server"));
 

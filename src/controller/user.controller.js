@@ -2,6 +2,7 @@ import ledgerSchema from "../models/ledger.model.js"
 import transactionSchema from "../models/transaction.model.js"
 import userSchema from "../models/user.model.js";
 import chatSchema from "../models/chat.model.js";
+import messageSchema from "../models/message.model.js";
 import { decodeToken } from "../utils/jwt.js"
 import mongoose from "mongoose";
 
@@ -139,6 +140,48 @@ const addMembers = async(req, res) => {
     }
 }
 
+const getChats = async(req, res) => {
+    try {
+        const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET);
+        const userObjectId = new mongoose.Types.ObjectId(decoded._id);
+
+        const chats = await chatSchema.find({
+            'members.userId': userObjectId
+        })
+        .populate('latestMessage')
+        .sort({ latestMessageAt: -1 });
+
+        // Get latest message details for each chat
+        const chatsWithMessages = await Promise.all(
+            chats.map(async (chat) => {
+                const latestMessage = await messageSchema.findById(chat.latestMessage)
+                    .populate('sender', 'username _id');
+                
+                return {
+                    ...chat.toObject(),
+                    latestMessageDetails: latestMessage
+                };
+            })
+        );
+
+        return res.send(chatsWithMessages);
+    } catch (error) {
+        console.log("Error in getChats:", error.message);
+        return res.status(500).send({ error: error.message });
+    }
+};
+
+const getCurrentUser = async(req, res) => {
+    try {
+        const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET);
+        const user = await userSchema.findById(decoded._id);
+        return res.send(user);
+    } catch (error) {
+        console.log("Error in getCurrentUser:", error.message);
+        return res.status(500).send({ error: error.message });
+    }
+};
+
 export default {
     getLedgers,
     createLedger,
@@ -146,5 +189,7 @@ export default {
     getTransactions,
     createTransactions,
     getUsers,
-    addMembers
+    addMembers,
+    getChats,
+    getCurrentUser
 }

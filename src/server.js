@@ -8,6 +8,7 @@ import userRouter from './routes/user.routes.js';
 import { Server } from 'socket.io';
 import http from 'http';
 import chatSchema from './models/chat.model.js';
+import session from 'express-session';
 
 dotenv.config();
 
@@ -18,6 +19,12 @@ app.use(express.json());
 app.use(corsMiddleware);
 app.use(cookieParser());
 connectDB();
+
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true
+}));
 
 app.use('/api/auth', authRouter);
 app.use('/api', userRouter);

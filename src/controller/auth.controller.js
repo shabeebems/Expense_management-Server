@@ -1,26 +1,34 @@
 import userModel from "../models/user.model.js";
 import { createAccessToken, createRefreshToken, deleteToken } from "../utils/jwt.js";
 
-const loginCheck = async(req, res) => {
-    try {
-        const { email, password } = req.body
-        const existingUser = await userModel.findOne({ email, password });
-        
-        if(!existingUser) return res.send({ success: false, message: "User not exist" })
+const loginCheck = async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-        const payload = {
-            _id: existingUser._id,
-            email
-        }
-
-        createAccessToken(res, payload)
-        createRefreshToken(res, payload);
-
-        return res.send({ success: true, message: "Successs", token: { email } })
-    } catch (error) {
-        console.log(error.message)
+    const existingUser = await userModel.findOne({ email });
+    if (!existingUser) {
+      return res.send({ success: false, message: "User does not exist" });
     }
-}
+
+    if (existingUser.password !== password) {
+      return res.send({ success: false, message: "Invalid password" });
+    }
+
+    const payload = { _id: existingUser._id, email };
+
+    createAccessToken(res, payload);
+    createRefreshToken(res, payload);
+
+    return res.send({
+      success: true,
+      message: "Login successful",
+      token: { email: existingUser.email },
+    });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).send({ success: false, message: "Server error" });
+  }
+};
 
 const logout = async(req, res) => {
     try {

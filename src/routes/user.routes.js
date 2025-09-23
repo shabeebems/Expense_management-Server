@@ -7,6 +7,7 @@ const userRouter = express.Router()
 userRouter.get('/ledger', authenticateToken, userController.getLedgers);
 userRouter.post('/ledger', authenticateToken, userController.createLedger);
 userRouter.get('/ledger/:ledgerId', authenticateToken, userController.getLedger);
+userRouter.patch('/ledger/:ledgerId', authenticateToken, userController.updateStatus);
 
 userRouter.get('/transactions/:ledgerId', authenticateToken, userController.getTransactions);
 userRouter.post('/transactions/:ledgerId', authenticateToken, userController.createTransactions);

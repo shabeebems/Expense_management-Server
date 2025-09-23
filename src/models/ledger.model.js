@@ -5,7 +5,12 @@ const ledgerSchema = new mongoose.Schema({
     userId: { type: String, required: true },
     members: { type: Array },
     totalExpense: { type: Number, default: 0 },
-    totalIncome: { type: Number, default: 0 }
+    totalIncome: { type: Number, default: 0 },
+    status: { 
+        type: String, 
+        enum: ["active", "closed"], 
+        default: "active" 
+    }
 }, {
     timestamps: true
 });

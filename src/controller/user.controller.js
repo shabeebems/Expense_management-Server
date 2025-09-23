@@ -6,20 +6,29 @@ import messageSchema from "../models/message.model.js";
 import { decodeToken } from "../utils/jwt.js"
 import mongoose from "mongoose";
 
-const getLedgers = async(req, res) => {
+const getLedgers = async (req, res) => {
     try {
-        const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
+        const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET);
         const userObjectId = new mongoose.Types.ObjectId(decoded._id);
+        const { status } = req.query;
 
-        const ledgers = await ledgerSchema.find({ 
+        let filter = { 
             members: { $elemMatch: { userId: userObjectId } } 
-        });
+        };
 
-        return res.send(ledgers)
+        if (status && status !== "all") {
+            filter.status = status;
+        }
+
+        const ledgers = await ledgerSchema.find(filter);
+
+        return res.send(ledgers);
     } catch (error) {
-        console.log(error.message)
+        console.log(error.message);
+        return res.status(500).json({ message: "Server error" });
     }
-}
+};
+
 
 const createLedger = async(req, res) => {
     try {
@@ -49,6 +58,25 @@ const getLedger = async(req, res) => {
         console.log(error.message)
     }
 }
+
+const updateStatus = async (req, res) => {
+    try {
+        const { status } = req.body;
+        const { ledgerId } = req.params;
+
+        const updatedLedger = await ledgerSchema.findByIdAndUpdate(
+            ledgerId,
+            { status },
+            { new: true, runValidators: true }
+        );
+
+        return res.send(updatedLedger);
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
 
 const getTransactions = async(req, res) => {
     try {
@@ -186,6 +214,7 @@ export default {
     getLedgers,
     createLedger,
     getLedger,
+    updateStatus,
     getTransactions,
     createTransactions,
     getUsers,

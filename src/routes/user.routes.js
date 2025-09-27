@@ -11,6 +11,7 @@ userRouter.patch('/ledger/:ledgerId', authenticateToken, userController.updateSt
 
 userRouter.get('/transactions/:ledgerId', authenticateToken, userController.getTransactions);
 userRouter.post('/transactions/:ledgerId', authenticateToken, userController.createTransactions);
+userRouter.get('/transactions/:ledgerId/recent', authenticateToken, userController.getRecentTransactions);
 
 userRouter.get('/users', authenticateToken, userController.getUsers);
 userRouter.patch('/add-members', authenticateToken, userController.addMembers);

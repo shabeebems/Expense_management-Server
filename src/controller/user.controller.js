@@ -106,6 +106,22 @@ const createTransactions = async(req, res) => {
     }
 }
 
+const getRecentTransactions = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 6;
+
+    const transactions = await transactionSchema
+      .find({ ledgerId: req.params.ledgerId })
+      .sort({ createdAt: -1 })
+      .limit(limit);
+
+    res.status(200).send(transactions);
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 const getUsers = async(req, res) => {
     try {
         const search = req.query.search || "";
@@ -217,6 +233,7 @@ export default {
     updateStatus,
     getTransactions,
     createTransactions,
+    getRecentTransactions,
     getUsers,
     addMembers,
     getChats,

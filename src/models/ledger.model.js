@@ -2,15 +2,13 @@ import mongoose from "mongoose";
 
 const ledgerSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    userId: { type: String, required: true },
-    members: { type: Array },
+    userId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: "user",
+        required: true 
+    },
     totalExpense: { type: Number, default: 0 },
-    totalIncome: { type: Number, default: 0 },
-    status: { 
-        type: String, 
-        enum: ["active", "closed"], 
-        default: "active" 
-    }
+    totalIncome: { type: Number, default: 0 }
 }, {
     timestamps: true
 });

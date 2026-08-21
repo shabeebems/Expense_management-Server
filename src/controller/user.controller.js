@@ -3,6 +3,30 @@ import transactionSchema from "../models/transaction.model.js"
 import { decodeToken } from "../utils/jwt.js"
 import mongoose from "mongoose";
 
+const parseTransactionDate = (value) => {
+    if (!value) return null;
+    const str = String(value).slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        const [year, month, day] = str.split("-").map(Number);
+        return new Date(Date.UTC(year, month - 1, day));
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const todayDateString = () =>
+    new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(new Date());
+
+const isFutureTransactionDate = (happenedDate) => {
+    if (!happenedDate) return true;
+    return happenedDate.toISOString().slice(0, 10) > todayDateString();
+};
+
 const getLedgers = async (req, res) => {
     try {
         const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET);
@@ -95,7 +119,7 @@ const getTransactions = async(req, res) => {
 
         const transactions = await transactionSchema
             .find({ ledgerId: req.params.ledgerId })
-            .sort({ createdAt: -1 })
+            .sort({ date: -1, createdAt: -1 })
 
         return res.send(transactions)
     } catch (error) {
@@ -106,9 +130,17 @@ const getTransactions = async(req, res) => {
 
 const createTransactions = async(req, res) => {
     try {
-        const { type, amount } = req.body
+        const { type, amount, activity, date } = req.body
         const { ledgerId } = req.params
         const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
+
+        const happenedDate = parseTransactionDate(date)
+        if (!happenedDate) {
+            return res.status(400).json({ message: "Date is required" });
+        }
+        if (isFutureTransactionDate(happenedDate)) {
+            return res.status(400).json({ message: "Date cannot be after today" });
+        }
 
         const ledger = await ledgerSchema.findOne({
             _id: ledgerId,
@@ -118,7 +150,13 @@ const createTransactions = async(req, res) => {
             return res.status(404).json({ message: "Ledger not found" });
         }
 
-        const created = await transactionSchema.create({ ledgerId, ...req.body })
+        const created = await transactionSchema.create({
+            ledgerId,
+            type,
+            amount,
+            activity,
+            date: happenedDate
+        })
         if(type === "income") {
             await ledgerSchema.updateOne(
                 { _id: ledgerId },
@@ -142,7 +180,7 @@ const createTransactions = async(req, res) => {
 const updateTransaction = async(req, res) => {
     try {
         const { ledgerId, transactionId } = req.params
-        const { type, amount, activity } = req.body
+        const { type, amount, activity, date } = req.body
         const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
 
         const trimmedActivity = activity?.trim()
@@ -154,6 +192,14 @@ const updateTransaction = async(req, res) => {
         }
         if (typeof amount !== "number" || amount <= 0) {
             return res.status(400).json({ message: "Amount must be greater than 0" });
+        }
+
+        const happenedDate = parseTransactionDate(date)
+        if (!happenedDate) {
+            return res.status(400).json({ message: "Date is required" });
+        }
+        if (isFutureTransactionDate(happenedDate)) {
+            return res.status(400).json({ message: "Date cannot be after today" });
         }
 
         const ledger = await ledgerSchema.findOne({
@@ -178,6 +224,7 @@ const updateTransaction = async(req, res) => {
         transaction.activity = trimmedActivity
         transaction.type = type
         transaction.amount = amount
+        transaction.date = happenedDate
         await transaction.save()
 
         if (incomeDelta !== 0 || expenseDelta !== 0) {

@@ -1,30 +1,50 @@
 import ledgerSchema from "../models/ledger.model.js"
 import transactionSchema from "../models/transaction.model.js"
+import categorySchema from "../models/category.model.js"
 import { decodeToken } from "../utils/jwt.js"
 import mongoose from "mongoose";
 
-const parseTransactionDate = (value) => {
-    if (!value) return null;
-    const str = String(value).slice(0, 10);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-        const [year, month, day] = str.split("-").map(Number);
-        return new Date(Date.UTC(year, month - 1, day));
-    }
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const findOwnedLedger = (ledgerId, userId) =>
+    ledgerSchema.findOne({ _id: ledgerId, userId });
+
+const isPopulatedCategory = (value) =>
+    Boolean(value && typeof value === "object" && value._id && value.name);
+
+const serializeTransaction = (transaction) => {
+    const plain = typeof transaction.toObject === "function" ? transaction.toObject() : transaction;
+    const category = isPopulatedCategory(plain.categoryId)
+        ? {
+            _id: plain.categoryId._id,
+            name: plain.categoryId.name,
+        }
+        : null;
+
+    return {
+        ...plain,
+        categoryId: category ? category._id : plain.categoryId || null,
+        category,
+    };
 };
 
-const todayDateString = () =>
-    new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Kolkata",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    }).format(new Date());
+const resolveCategoryId = async (categoryId, ledgerId) => {
+    if (categoryId === undefined || categoryId === null || categoryId === "") {
+        return { categoryId: null };
+    }
+    if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+        return { error: { status: 400, message: "Category is invalid" } };
+    }
 
-const isFutureTransactionDate = (happenedDate) => {
-    if (!happenedDate) return true;
-    return happenedDate.toISOString().slice(0, 10) > todayDateString();
+    const category = await categorySchema.findOne({
+        _id: categoryId,
+        ledgerId: String(ledgerId),
+    });
+    if (!category) {
+        return { error: { status: 404, message: "Category not found" } };
+    }
+
+    return { categoryId: category._id };
 };
 
 const getLedgers = async (req, res) => {
@@ -119,9 +139,10 @@ const getTransactions = async(req, res) => {
 
         const transactions = await transactionSchema
             .find({ ledgerId: req.params.ledgerId })
-            .sort({ date: -1, createdAt: -1 })
+            .populate("categoryId", "name")
+            .sort({ createdAt: -1 })
 
-        return res.send(transactions)
+        return res.send(transactions.map(serializeTransaction))
     } catch (error) {
         console.log(error.message)
         return res.status(500).json({ message: "Server error" });
@@ -130,17 +151,9 @@ const getTransactions = async(req, res) => {
 
 const createTransactions = async(req, res) => {
     try {
-        const { type, amount, activity, date } = req.body
+        const { type, amount } = req.body
         const { ledgerId } = req.params
         const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
-
-        const happenedDate = parseTransactionDate(date)
-        if (!happenedDate) {
-            return res.status(400).json({ message: "Date is required" });
-        }
-        if (isFutureTransactionDate(happenedDate)) {
-            return res.status(400).json({ message: "Date cannot be after today" });
-        }
 
         const ledger = await ledgerSchema.findOne({
             _id: ledgerId,
@@ -150,13 +163,18 @@ const createTransactions = async(req, res) => {
             return res.status(404).json({ message: "Ledger not found" });
         }
 
+        const resolved = await resolveCategoryId(req.body.categoryId, ledgerId)
+        if (resolved.error) {
+            return res.status(resolved.error.status).json({ message: resolved.error.message })
+        }
+
+        const { category, ...transactionBody } = req.body
         const created = await transactionSchema.create({
+            ...transactionBody,
             ledgerId,
-            type,
-            amount,
-            activity,
-            date: happenedDate
+            categoryId: resolved.categoryId,
         })
+        await created.populate("categoryId", "name")
         if(type === "income") {
             await ledgerSchema.updateOne(
                 { _id: ledgerId },
@@ -170,7 +188,7 @@ const createTransactions = async(req, res) => {
                 { timestamps: true }
             )
         }
-        return res.send(created)
+        return res.send(serializeTransaction(created))
     } catch (error) {
         console.log(error.message)
         return res.status(500).json({ message: "Server error" });
@@ -180,7 +198,7 @@ const createTransactions = async(req, res) => {
 const updateTransaction = async(req, res) => {
     try {
         const { ledgerId, transactionId } = req.params
-        const { type, amount, activity, date } = req.body
+        const { type, amount, activity } = req.body
         const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
 
         const trimmedActivity = activity?.trim()
@@ -192,14 +210,6 @@ const updateTransaction = async(req, res) => {
         }
         if (typeof amount !== "number" || amount <= 0) {
             return res.status(400).json({ message: "Amount must be greater than 0" });
-        }
-
-        const happenedDate = parseTransactionDate(date)
-        if (!happenedDate) {
-            return res.status(400).json({ message: "Date is required" });
-        }
-        if (isFutureTransactionDate(happenedDate)) {
-            return res.status(400).json({ message: "Date cannot be after today" });
         }
 
         const ledger = await ledgerSchema.findOne({
@@ -221,11 +231,17 @@ const updateTransaction = async(req, res) => {
         const incomeDelta = (type === "income" ? amount : 0) - (transaction.type === "income" ? transaction.amount : 0)
         const expenseDelta = (type === "expense" ? amount : 0) - (transaction.type === "expense" ? transaction.amount : 0)
 
+        const resolved = await resolveCategoryId(req.body.categoryId, ledgerId)
+        if (resolved.error) {
+            return res.status(resolved.error.status).json({ message: resolved.error.message })
+        }
+
         transaction.activity = trimmedActivity
         transaction.type = type
         transaction.amount = amount
-        transaction.date = happenedDate
+        transaction.categoryId = resolved.categoryId
         await transaction.save()
+        await transaction.populate("categoryId", "name")
 
         if (incomeDelta !== 0 || expenseDelta !== 0) {
             await ledgerSchema.updateOne(
@@ -235,7 +251,7 @@ const updateTransaction = async(req, res) => {
             )
         }
 
-        return res.send(transaction)
+        return res.send(serializeTransaction(transaction))
     } catch (error) {
         console.log(error.message)
         return res.status(500).json({ message: "Server error" });
@@ -274,7 +290,60 @@ const deleteTransaction = async(req, res) => {
             { timestamps: true }
         )
 
-        return res.send({ message: "Transaction deleted", transaction })
+        return res.send({ message: "Transaction deleted", transaction: serializeTransaction(transaction) })
+    } catch (error) {
+        console.log(error.message)
+        return res.status(500).json({ message: "Server error" });
+    }
+}
+
+const getCategories = async (req, res) => {
+    try {
+        const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
+        const ledger = await findOwnedLedger(req.params.ledgerId, decoded._id)
+        if (!ledger) {
+            return res.status(404).json({ message: "Ledger not found" });
+        }
+
+        const categories = await categorySchema
+            .find({ ledgerId: req.params.ledgerId })
+            .sort({ name: 1 })
+
+        return res.send(categories)
+    } catch (error) {
+        console.log(error.message)
+        return res.status(500).json({ message: "Server error" });
+    }
+}
+
+const createCategory = async (req, res) => {
+    try {
+        const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
+        const { ledgerId } = req.params
+        const name = req.body.name?.trim()
+
+        if (!name || name.length < 2 || name.length > 30) {
+            return res.status(400).json({ message: "Category name must be 2 to 30 characters" });
+        }
+
+        const ledger = await findOwnedLedger(ledgerId, decoded._id)
+        if (!ledger) {
+            return res.status(404).json({ message: "Ledger not found" });
+        }
+
+        const existing = await categorySchema.findOne({
+            ledgerId: String(ledgerId),
+            name: { $regex: `^${escapeRegex(name)}$`, $options: "i" },
+        })
+        if (existing) {
+            return res.status(409).json({ message: "That category already exists" });
+        }
+
+        const category = await categorySchema.create({
+            ledgerId: String(ledgerId),
+            name,
+        })
+        return res.send(category)
     } catch (error) {
         console.log(error.message)
         return res.status(500).json({ message: "Server error" });
@@ -289,5 +358,7 @@ export default {
     getTransactions,
     createTransactions,
     updateTransaction,
-    deleteTransaction
+    deleteTransaction,
+    getCategories,
+    createCategory,
 }

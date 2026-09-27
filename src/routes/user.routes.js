@@ -8,6 +8,9 @@ userRouter.post('/ledger', authenticateToken, userController.createLedger);
 userRouter.put('/ledger/:ledgerId', authenticateToken, userController.updateLedger);
 userRouter.get('/ledger/:ledgerId', authenticateToken, userController.getLedger);
 
+userRouter.get('/categories/:ledgerId', authenticateToken, userController.getCategories);
+userRouter.post('/categories/:ledgerId', authenticateToken, userController.createCategory);
+
 userRouter.get('/transactions/:ledgerId', authenticateToken, userController.getTransactions);
 userRouter.post('/transactions/:ledgerId', authenticateToken, userController.createTransactions);
 userRouter.put('/transactions/:ledgerId/:transactionId', authenticateToken, userController.updateTransaction);

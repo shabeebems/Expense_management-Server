@@ -6,13 +6,17 @@ const transactionSchema = new mongoose.Schema(
     type: { type: String, required: true, enum: ["expense", "income"] },
     amount: { type: Number, required: true },
     activity: { type: String, required: true },
-    date: { type: Date, required: true },
+    categoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "category",
+      default: null,
+    },
   },
   {
     timestamps: true,
   }
 );
 
-transactionSchema.index({ ledgerId: 1, date: -1, createdAt: -1 });
+transactionSchema.index({ ledgerId: 1, createdAt: -1 });
 
 export default mongoose.model("transaction", transactionSchema);

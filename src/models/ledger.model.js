@@ -8,7 +8,8 @@ const ledgerSchema = new mongoose.Schema({
         required: true 
     },
     totalExpense: { type: Number, default: 0 },
-    totalIncome: { type: Number, default: 0 }
+    totalIncome: { type: Number, default: 0 },
+    deletedAt: { type: Date, default: null },
 }, {
     timestamps: true
 });

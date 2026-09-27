@@ -3,11 +3,26 @@ import transactionSchema from "../models/transaction.model.js"
 import categorySchema from "../models/category.model.js"
 import { decodeToken } from "../utils/jwt.js"
 import mongoose from "mongoose";
+import { destroyLedgerData, LEDGER_RETENTION_MS } from "../jobs/purgeExpiredLedgers.js";
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const activeLedgerQuery = (ledgerId, userId) => ({
+    _id: ledgerId,
+    userId,
+    deletedAt: null,
+});
+
 const findOwnedLedger = (ledgerId, userId) =>
-    ledgerSchema.findOne({ _id: ledgerId, userId });
+    ledgerSchema.findOne(activeLedgerQuery(ledgerId, userId));
+
+const withPurgeDate = (ledger) => {
+    const plain = ledger.toObject();
+    return {
+        ...plain,
+        purgeAt: new Date(new Date(plain.deletedAt).getTime() + LEDGER_RETENTION_MS),
+    };
+};
 
 const isPopulatedCategory = (value) =>
     Boolean(value && typeof value === "object" && value._id && value.name);
@@ -52,7 +67,7 @@ const getLedgers = async (req, res) => {
         const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET);
         const userObjectId = new mongoose.Types.ObjectId(decoded._id);
         const ledgers = await ledgerSchema
-            .find({ userId: userObjectId })
+            .find({ userId: userObjectId, deletedAt: null })
             .sort({ updatedAt: -1, createdAt: -1 });
 
         return res.send(ledgers);
@@ -95,7 +110,7 @@ const updateLedger = async(req, res) => {
         }
 
         const ledger = await ledgerSchema.findOneAndUpdate(
-            { _id: req.params.ledgerId, userId: decoded._id },
+            activeLedgerQuery(req.params.ledgerId, decoded._id),
             { name },
             { new: true }
         )
@@ -112,10 +127,7 @@ const updateLedger = async(req, res) => {
 const getLedger = async(req, res) => {
     try {
         const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
-        const ledger = await ledgerSchema.findOne({
-            _id: req.params.ledgerId,
-            userId: decoded._id
-        })
+        const ledger = await findOwnedLedger(req.params.ledgerId, decoded._id)
         if (!ledger) {
             return res.status(404).json({ message: "Ledger not found" });
         }
@@ -129,10 +141,7 @@ const getLedger = async(req, res) => {
 const getTransactions = async(req, res) => {
     try {
         const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
-        const ledger = await ledgerSchema.findOne({
-            _id: req.params.ledgerId,
-            userId: decoded._id
-        })
+        const ledger = await findOwnedLedger(req.params.ledgerId, decoded._id)
         if (!ledger) {
             return res.status(404).json({ message: "Ledger not found" });
         }
@@ -155,10 +164,7 @@ const createTransactions = async(req, res) => {
         const { ledgerId } = req.params
         const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
 
-        const ledger = await ledgerSchema.findOne({
-            _id: ledgerId,
-            userId: decoded._id
-        })
+        const ledger = await findOwnedLedger(ledgerId, decoded._id)
         if (!ledger) {
             return res.status(404).json({ message: "Ledger not found" });
         }
@@ -212,10 +218,7 @@ const updateTransaction = async(req, res) => {
             return res.status(400).json({ message: "Amount must be greater than 0" });
         }
 
-        const ledger = await ledgerSchema.findOne({
-            _id: ledgerId,
-            userId: decoded._id
-        })
+        const ledger = await findOwnedLedger(ledgerId, decoded._id)
         if (!ledger) {
             return res.status(404).json({ message: "Ledger not found" });
         }
@@ -263,10 +266,7 @@ const deleteTransaction = async(req, res) => {
         const { ledgerId, transactionId } = req.params
         const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
 
-        const ledger = await ledgerSchema.findOne({
-            _id: ledgerId,
-            userId: decoded._id
-        })
+        const ledger = await findOwnedLedger(ledgerId, decoded._id)
         if (!ledger) {
             return res.status(404).json({ message: "Ledger not found" });
         }
@@ -350,6 +350,79 @@ const createCategory = async (req, res) => {
     }
 }
 
+const getDeletedLedgers = async (req, res) => {
+    try {
+        const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
+        const userObjectId = new mongoose.Types.ObjectId(decoded._id)
+        const ledgers = await ledgerSchema
+            .find({ userId: userObjectId, deletedAt: { $ne: null } })
+            .sort({ deletedAt: -1 })
+        return res.send(ledgers.map(withPurgeDate))
+    } catch (error) {
+        console.log(error.message)
+        return res.status(500).json({ message: "Server error" });
+    }
+}
+
+const deleteLedger = async (req, res) => {
+    try {
+        const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
+        const ledger = await ledgerSchema.findOneAndUpdate(
+            activeLedgerQuery(req.params.ledgerId, decoded._id),
+            { deletedAt: new Date() },
+            { new: true }
+        )
+        if (!ledger) {
+            return res.status(404).json({ message: "Ledger not found" });
+        }
+        return res.send(withPurgeDate(ledger))
+    } catch (error) {
+        console.log(error.message)
+        return res.status(500).json({ message: "Server error" });
+    }
+}
+
+const permanentlyDeleteLedger = async (req, res) => {
+    try {
+        const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
+        const ledger = await ledgerSchema.findOne({
+            _id: req.params.ledgerId,
+            userId: decoded._id,
+            deletedAt: { $ne: null },
+        })
+        if (!ledger) {
+            return res.status(404).json({ message: "Deleted ledger not found" });
+        }
+        await destroyLedgerData(ledger._id)
+        return res.send({ message: "Ledger deleted" })
+    } catch (error) {
+        console.log(error.message)
+        return res.status(500).json({ message: "Server error" });
+    }
+}
+
+const restoreLedger = async (req, res) => {
+    try {
+        const decoded = await decodeToken(req, process.env.ACCESS_TOKEN_SECRET)
+        const ledger = await ledgerSchema.findOneAndUpdate(
+            {
+                _id: req.params.ledgerId,
+                userId: decoded._id,
+                deletedAt: { $ne: null },
+            },
+            { deletedAt: null },
+            { new: true }
+        )
+        if (!ledger) {
+            return res.status(404).json({ message: "Deleted ledger not found" });
+        }
+        return res.send(ledger)
+    } catch (error) {
+        console.log(error.message)
+        return res.status(500).json({ message: "Server error" });
+    }
+}
+
 export default {
     getLedgers,
     createLedger,
@@ -361,4 +434,8 @@ export default {
     deleteTransaction,
     getCategories,
     createCategory,
+    getDeletedLedgers,
+    deleteLedger,
+    permanentlyDeleteLedger,
+    restoreLedger,
 }
